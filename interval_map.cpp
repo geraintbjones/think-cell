@@ -32,7 +32,7 @@ public:
             auto afterValue = ( * this )[ keyEnd ];
             if ( afterValue != val )
             {
-                m_map.insert( { keyEnd, afterValue } );
+                m_map.insert( { keyEnd, std::move( afterValue ) } );
             }
         }
         else
@@ -56,7 +56,7 @@ public:
         // Write our new interval iff the value differs from prior interval.
         if ( val != ( * this )[ keyBegin ] )
         {
-            m_map.insert( { keyBegin, val } );
+            m_map.insert( { keyBegin, std::forward<V>( val ) } );
         }
 	}
 
