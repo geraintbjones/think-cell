@@ -3,6 +3,9 @@ CXX := $(HOME)/local/gcc-13.2.0/bin/g++
 CXXFLAGS =           \
     -ggdb            \
     -O0              \
+    -Werror          \
+    -Wextra          \
+    -Wall            \
     -std=c++20       \
     -D_GLIBCXX_DEBUG \
 
@@ -15,6 +18,3 @@ $(EXE):
 clean:
 	-rm -f $(EXE)
 
-#    -Wall            \
-#    -Wextra          \
-#    -Werror          \

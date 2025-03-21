@@ -170,15 +170,15 @@ void IntervalMapTest()
         cout << "}" << endl;
 
         cout << "            0";
-        for ( auto key = 1; key != size; ++ key ) cout << "  " << ( key % 10 );
+        for ( size_t key = 1; key != size; ++ key ) cout << "  " << ( key % 10 );
         cout << " }" << endl;
 
         cout << "Actual    { " << map[ 0 ];
-        for ( auto key = 1; key != size; ++ key ) cout << ", " << map[ key ];
+        for ( size_t key = 1; key != size; ++ key ) cout << ", " << map[ key ];
         cout << " }" << endl;
 
         cout << "Expected: { " << ref[ 0 ];
-        for ( auto key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
+        for ( size_t key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
         cout << " }" << endl << endl;
 
         if ( ! eq20( map, ref ) ) break;
