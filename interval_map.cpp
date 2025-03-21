@@ -217,6 +217,8 @@ struct Ref {
     }
 };
 
+static int how_many = 10;
+
 void IntervalMapTest()
 {
     {
@@ -226,7 +228,7 @@ void IntervalMapTest()
     }
 
     constexpr size_t size = 20;
-    int how_many = 100000;
+//     int how_many = 100000;
 
     interval_map<int, char> map('A');
     Ref<size, 'A'> ref;
@@ -259,7 +261,15 @@ void IntervalMapTest()
     }
 }
 
-int main( )
+int main(int argc, char * argv[])
 {
-    IntervalMapTest( );
+    if (argc == 2) {
+        how_many = std::atoi(argv[1]);
+        if (how_many) {
+            IntervalMapTest( );
+            return 0;
+        }
+    }
+    cout << "Usage: " << argv[0] << "<number of randon tests>" << endl;
+    return 1;
 }
