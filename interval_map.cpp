@@ -31,19 +31,13 @@ public:
             };
 
         iterator begin;
-        iterator end;
-        bool didEndInsert;
 
-        {
-            auto insertion = m_map.try_emplace(keyEnd, /* temporary value */ std::forward<V>(val));
-            end            = insertion.first;
-            didEndInsert   = insertion.second;
-            if (didEndInsert) {
-                end -> second = priorValue(end);
-            }
-            //  else there's already a sentinal at the end of our interval, and that's
-            //  ok.
+        auto [end, didEndInsert] = m_map.try_emplace(keyEnd, /* temporary value */ std::forward<V>(val));
+        if (didEndInsert) {
+            end -> second = priorValue(end);
         }
+        //  else there's already a sentinal at the end of our interval, and that's
+        //  ok.
 
         try {
             begin = m_map.insert_or_assign(end, keyBegin, std::forward<V>(val));
