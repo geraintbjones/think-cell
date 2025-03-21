@@ -32,11 +32,10 @@ public:
 
         iterator begin;
         iterator end;
-        bool didBeginInsert;
         bool didEndInsert;
 
         {
-            auto insertion = m_map.emplace(keyEnd, /* temporary value */ std::forward<V>(val));
+            auto insertion = m_map.try_emplace(keyEnd, /* temporary value */ std::forward<V>(val));
             end            = insertion.first;
             didEndInsert   = insertion.second;
             if (didEndInsert) {
@@ -47,12 +46,7 @@ public:
         }
 
         try {
-            auto insertion = m_map.emplace(keyBegin, std::forward<V>(val));
-            begin          = insertion.first;
-            didBeginInsert = insertion.second;
-            if (!didBeginInsert) {
-                begin -> second = val;
-            }
+            begin = m_map.insert_or_assign(end, keyBegin, std::forward<V>(val));
         } catch (...) {
             // Clean up work we've already done.
             if (didEndInsert) {
@@ -136,6 +130,8 @@ template <typename K, typename V> bool is_canonical(char m_valBegin, const map<K
     return true;
 }
 
+template <typename T> T id( T value ) { return value; }
+
 void IntervalMapTest()
 {
     {
@@ -158,7 +154,10 @@ void IntervalMapTest()
         if ( ! ( keyBegin < keyEnd ) ) continue;
         char value = 'A' + bounded_rand( 6 );
 
-        map.assign( keyBegin, keyEnd, value );
+        int & keyBeginRef = keyBegin;
+//         char & valueRef = value;
+
+        map.assign( keyBeginRef, keyEnd, id( value ) );
         for ( auto key = keyBegin; key != keyEnd ; ++ key ) ref[ key ] = value;
 
         cout << how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
