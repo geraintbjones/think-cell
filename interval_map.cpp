@@ -22,30 +22,53 @@ public:
 	void assign( K const& keyBegin, K const& keyEnd, V_forward&& val )
 		requires (std::is_same<std::remove_cvref_t<V_forward>, V>::value)
 	{
+        using iterator = std::map<K,V>::iterator;
+
         if (!(keyBegin < keyEnd)) return;
 
-        auto after = m_map.find(keyEnd);
+        auto priorValue = [&](iterator element) -> char & {
+                return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
+            };
 
-        if (after == m_map.end()) {
-            //  If there's no end marker put one in unless its value would match our new interval.
-            V const & afterValue = (* this)[keyEnd];
-            if (!(afterValue == val)) {
-                m_map.insert({keyEnd, afterValue});
-            }
-        } else {
-            // If there is an end marker remove it if its value matches our new interval.
-            if (after -> second == val) {
-                m_map.erase(after);
-            }
-        }
-        
-        // Erase all the old intervals overwritten by this assign.
-        m_map.erase(m_map.lower_bound(keyBegin), m_map.lower_bound(keyEnd));
+        std::pair<iterator, bool> beginInsertion;
+        std::pair<iterator, bool> endInsertion;
+        iterator end;
+        iterator begin;
 
-        // Write our new interval iff the value differs from prior interval.
-        if (!(val == (* this)[keyBegin])) {
-            m_map.insert({keyBegin, std::forward<V>(val)});
+        {
+            endInsertion = m_map.emplace(keyEnd, V());
+            end          = endInsertion.first;
+            if (endInsertion.second) {
+                end -> second = priorValue(end);
+            }
+            //  else there's already a sentinal at the end of our interval, and that's
+            //  ok.
         }
+
+        try {
+            beginInsertion = m_map.emplace(keyBegin, std::forward<V>(val));
+            begin          = beginInsertion.first;
+            if (!beginInsertion.second) {
+                begin -> second = val;
+            }
+        } catch (...) {
+            // Clean up work we've already done.
+            if (endInsertion.second) {
+                m_map.erase(end);
+            }
+            throw;
+        }
+
+        // Accommodate canonicity.
+        while (end != m_map.end( ) && end -> second == val) {
+            ++ end;
+        }
+
+        if (!(begin -> second == priorValue(begin))) {
+            ++ begin;
+        }
+
+        m_map.erase(begin, end);
 	}
 
 	// look-up of the value associated with key
@@ -102,13 +125,23 @@ template <typename R1, typename R2> bool eq20( const R1 & r1, const R2 & r2 )
     return true;
 }
 
+template <typename K, typename V> bool is_canonical(char m_valBegin, const map<K,V> & m_map )
+{
+    char last = m_valBegin;
+    for ( auto const & element : m_map ) {
+        if ( element.second == last ) return false;
+        last = element.second;
+    }
+    return true;
+}
+
 void IntervalMapTest()
 {
-    {
-        interval_map<Key, Value> map( 'A' );
-        Value v = map[ Key( ) ];
-        map.assign( Key( ), Key( ), Value( ) );
-    }
+//     {
+//         interval_map<Key, Value> map( 'A' );
+//         Value v = map[ Key( ) ];
+//         map.assign( Key( ), Key( ), Value( ) );
+//     }
 
     array<char, 20> ref;
     size_t size = ref.size( );
@@ -128,9 +161,9 @@ void IntervalMapTest()
         map.assign( keyBegin, keyEnd, value );
         for ( auto key = keyBegin; key != keyEnd ; ++ key ) ref[ key ] = value;
 
-        cout << how_many -- << ": assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
+        cout << how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
 
-        cout << "{ ";
+        cout << "Intervals:{ ";
         for ( auto & [ key, value ] : map.m_map ) cout << "{ " << key << ", " << value << " } ";
         cout << "}" << endl;
 
@@ -144,11 +177,11 @@ void IntervalMapTest()
 
         cout << "Expected: { " << ref[ 0 ];
         for ( auto key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
-        cout << " }" << endl;
+        cout << " }" << endl << endl;
 
-        if ( eq20( map, ref ) ) continue;
+        if ( ! eq20( map, ref ) ) break;
+        if ( ! is_canonical( map.m_valBegin, map.m_map ) ) break;
 
-        break;
     }
 }
 
