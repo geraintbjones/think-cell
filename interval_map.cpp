@@ -39,13 +39,8 @@ public:
             }
         }
         
-        auto first = m_map.lower_bound(keyBegin);
-        auto last  = m_map.lower_bound(keyEnd);
-
         // Erase all the old intervals overwritten by this assign.
-        if (first != m_map.end()) {
-            m_map.erase(first, last);
-        }
+        m_map.erase(m_map.lower_bound(keyBegin), m_map.lower_bound(keyEnd));
 
         // Write our new interval iff the value differs from prior interval.
         if (!(val == (* this)[keyBegin])) {
@@ -92,13 +87,6 @@ struct Value
     bool operator != ( Value const & ) const = delete;
 };
 
-template <typename Range> void print( const char * intro, char begin, const Range & range )
-{
-    cerr << intro << begin << " ";
-    for ( auto & [ key, value ] : range ) cerr << "( " << key << ", " << value << " ), ";
-    cerr << endl;
-}
-
 unsigned bounded_rand(unsigned range)
 {
     for (unsigned x, r;;)
@@ -128,7 +116,9 @@ void IntervalMapTest()
     for ( auto & c : ref ) c = 'A';
     srand( time( 0 ) );
 
-    while ( true )
+    int how_many = 100000;
+
+    while ( how_many )
     {
         int keyBegin = bounded_rand( size - 1 );
         int keyEnd   = bounded_rand( size - 1 );
@@ -138,11 +128,15 @@ void IntervalMapTest()
         map.assign( keyBegin, keyEnd, value );
         for ( auto key = keyBegin; key != keyEnd ; ++ key ) ref[ key ] = value;
 
-        cout << "assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
+        cout << how_many -- << ": assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
 
         cout << "{ ";
         for ( auto & [ key, value ] : map.m_map ) cout << "{ " << key << ", " << value << " } ";
         cout << "}" << endl;
+
+        cout << "            0";
+        for ( auto key = 1; key != size; ++ key ) cout << "  " << ( key % 10 );
+        cout << " }" << endl;
 
         cout << "Actual    { " << map[ 0 ];
         for ( auto key = 1; key != size; ++ key ) cout << ", " << map[ key ];
