@@ -22,41 +22,34 @@ public:
 	void assign( K const& keyBegin, K const& keyEnd, V_forward&& val )
 		requires (std::is_same<std::remove_cvref_t<V_forward>, V>::value)
 	{
-        if ( ! ( keyBegin < keyEnd ) ) return;
+        if (!(keyBegin < keyEnd)) return;
 
-        auto after = m_map.find( keyEnd );
+        auto after = m_map.find(keyEnd);
 
-        if ( after == m_map.end( ) )
-        {
+        if (after == m_map.end()) {
             //  If there's no end marker put one in unless its value would match our new interval.
-            auto afterValue = ( * this )[ keyEnd ];
-            if ( afterValue != val )
-            {
-                m_map.insert( { keyEnd, std::move( afterValue ) } );
+            auto afterValue = (* this)[keyEnd];
+            if (afterValue != val) {
+                m_map.insert({keyEnd, std::move(afterValue)});
             }
-        }
-        else
-        {
+        } else {
             // If there is an end marker remove it if its value matches our new interval.
-            if ( after -> second == val )
-            {
-                m_map.erase( after );
+            if (after -> second == val) {
+                m_map.erase(after);
             }
         }
         
-        auto first = m_map.lower_bound( keyBegin );
-        auto last  = m_map.lower_bound( keyEnd );
+        auto first = m_map.lower_bound(keyBegin);
+        auto last  = m_map.lower_bound(keyEnd);
 
         // Erase all the old intervals overwritten by this assign.
-        if ( first != m_map.end( ) )
-        {
-            m_map.erase( first, last );
+        if (first != m_map.end()) {
+            m_map.erase(first, last);
         }
 
         // Write our new interval iff the value differs from prior interval.
-        if ( val != ( * this )[ keyBegin ] )
-        {
-            m_map.insert( { keyBegin, std::forward<V>( val ) } );
+        if (val != (* this)[keyBegin]) {
+            m_map.insert({keyBegin, std::forward<V>(val)});
         }
 	}
 
