@@ -30,15 +30,16 @@ public:
                 return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
             };
 
-        std::pair<iterator, bool> beginInsertion;
-        std::pair<iterator, bool> endInsertion;
-        iterator end;
         iterator begin;
+        iterator end;
+        bool didBeginInsert;
+        bool didEndInsert;
 
         {
-            endInsertion = m_map.emplace(keyEnd, V());
-            end          = endInsertion.first;
-            if (endInsertion.second) {
+            auto insertion = m_map.emplace(keyEnd, V());
+            end            = insertion.first;
+            didEndInsert   = insertion.second;
+            if (didEndInsert) {
                 end -> second = priorValue(end);
             }
             //  else there's already a sentinal at the end of our interval, and that's
@@ -46,14 +47,15 @@ public:
         }
 
         try {
-            beginInsertion = m_map.emplace(keyBegin, std::forward<V>(val));
-            begin          = beginInsertion.first;
-            if (!beginInsertion.second) {
+            auto insertion = m_map.emplace(keyBegin, std::forward<V>(val));
+            begin          = insertion.first;
+            didBeginInsert = insertion.second;
+            if (!didBeginInsert) {
                 begin -> second = val;
             }
         } catch (...) {
             // Clean up work we've already done.
-            if (endInsertion.second) {
+            if (didEndInsert) {
                 m_map.erase(end);
             }
             throw;
