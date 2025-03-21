@@ -121,6 +121,8 @@ void IntervalMapTest()
         assign( map, 3,4, 'C' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 1, 'A' }, { 3, 'C' }, { 4, 'A' } } ); 
         assign( map, 0,2, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { { 3, 'C' }, { 4, 'A' } } ); 
         assign( map, 0,4, 'C' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'C' }, { 4, 'A' } } ); 
+        assign( map, 0,4, 'B' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 4, 'A' } } ); 
+        assign( map, 0,4, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { } ); 
     }
 
     {
