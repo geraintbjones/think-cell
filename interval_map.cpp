@@ -26,7 +26,7 @@ public:
 
         if (!(keyBegin < keyEnd)) return;
 
-        auto priorValue = [&](iterator element) -> char & {
+        auto priorValue = [&](iterator element) -> V & {
                 return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
             };
 
@@ -36,7 +36,7 @@ public:
         bool didEndInsert;
 
         {
-            auto insertion = m_map.emplace(keyEnd, V());
+            auto insertion = m_map.emplace(keyEnd, /* temporary value */ std::forward<V>(val));
             end            = insertion.first;
             didEndInsert   = insertion.second;
             if (didEndInsert) {
@@ -98,7 +98,7 @@ using namespace std;
 
 struct Key
 {
-    Key( ) { }
+    Key( int ) { }
     bool operator < ( Key const & ) const { return true; }
     bool operator > ( Key const & ) const = delete;
     bool operator == ( Key const & ) const = delete;
@@ -106,7 +106,6 @@ struct Key
 
 struct Value
 {
-    Value( ) { }
     Value( char ) { }
     bool operator == ( Value const & ) const { return true; }
     bool operator != ( Value const & ) const = delete;
@@ -139,11 +138,10 @@ template <typename K, typename V> bool is_canonical(char m_valBegin, const map<K
 
 void IntervalMapTest()
 {
-//     {
-//         interval_map<Key, Value> map( 'A' );
-//         Value v = map[ Key( ) ];
-//         map.assign( Key( ), Key( ), Value( ) );
-//     }
+    {
+        interval_map<Key, Value> map( 'A' );
+        map.assign( Key( 0 ), Key( 0 ), Value( 'B' ) );
+    }
 
     array<char, 20> ref;
     size_t size = ref.size( );
