@@ -1,9 +1,69 @@
 #include <map>
 
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+#include <array>
+
+
+namespace test {
+
+unsigned bounded_rand(unsigned range)
+{
+    for (unsigned x, r;;)
+        if (x = std::rand(), r = x % range, x - r <= -range)
+            return r;
+}
+
+//
+// A dummy map wrapper that throws sometimes.
+//
+template<typename K, typename V> struct map {
+
+    using base_map = std::map<K, V>;
+    using iterator = base_map::iterator;
+    using const_iterator = base_map::const_iterator;
+
+    iterator begin( ) { return m_map.begin( ); }
+    const_iterator begin( ) const { return m_map.begin( ); }
+
+    iterator end( ) { return m_map.end( ); }
+    const_iterator end( ) const { return m_map.end( ); }
+
+    template<typename Key>
+    iterator upper_bound( const Key & key ) {
+        return m_map.upper_bound(key);
+    }
+
+    template<typename Key>
+    const_iterator upper_bound( const Key & key ) const {
+        return m_map.upper_bound(key);
+    }
+
+    template<typename V_fwd>
+    iterator try_emplace( iterator hint, const K & key, V_fwd && val ) {
+        return m_map.try_emplace(hint, key, std::forward<V>(val));
+    }
+
+    iterator insert_or_assign(iterator hint, const K & key, V && val) {
+        if (bounded_rand(3) == 2) {
+            throw std::bad_alloc( );
+        };
+        return m_map.insert_or_assign(hint, key, std::forward<V>(val)); }
+
+    iterator erase(iterator pos) { return m_map.erase(pos); }
+    iterator erase(iterator first, iterator last) { return m_map.erase(first, last); }
+
+    base_map m_map;
+};
+
+} // namespace test
+
 template<typename K, typename V>
 class interval_map {
 	friend void IntervalMapTest();
 	V m_valBegin;
+// 	test::map<K,V> m_map;
 	std::map<K,V> m_map;
 public:
 	// constructor associates whole range of K with val
@@ -22,7 +82,7 @@ public:
 	void assign( K const& keyBegin, K const& keyEnd, V_forward&& val )
 		requires (std::is_same<std::remove_cvref_t<V_forward>, V>::value)
 	{
-        using iterator = std::map<K,V>::iterator;
+        using iterator = decltype(m_map)::iterator;
 
         if (!(keyBegin < keyEnd)) return;
 
@@ -31,8 +91,9 @@ public:
             };
 
         iterator afterEnd = m_map.upper_bound(keyEnd);
-        bool didEndInsert = afterEnd == m_map.begin( ) || ! (std::prev(afterEnd) -> first < keyEnd);
-        iterator end      = m_map.try_emplace(afterEnd, keyEnd, priorValue(afterEnd));
+        V afterEndValue   = priorValue(afterEnd);
+        bool didEndInsert = afterEnd == m_map.begin( ) || std::prev(afterEnd) -> first < keyEnd;
+        iterator end      = m_map.try_emplace(afterEnd, keyEnd, std::move(afterEndValue));
 
         iterator begin;
 
@@ -74,11 +135,6 @@ public:
 // We recommend to implement a test function that tests the functionality of
 // the interval_map, for example using a map of int intervals to char.
 
-#include <cstdlib>
-#include <ctime>
-#include <iostream>
-#include <array>
-
 using namespace std;
 
 struct Key
@@ -96,22 +152,17 @@ struct Value
     bool operator != ( Value const & ) const = delete;
 };
 
-unsigned bounded_rand(unsigned range)
+template <size_t size, typename R1, typename R2>
+bool eq( const R1 & r1, const R2 & r2 )
 {
-    for (unsigned x, r;;)
-        if (x = rand(), r = x % range, x - r <= -range)
-            return r;
-}
-
-template <typename R1, typename R2> bool eq20( const R1 & r1, const R2 & r2 )
-{
-    for ( int key = 0; key != 20; ++ key )
+    for ( int key = 0; key != size; ++ key )
         if ( r1[ key ] != r2[ key ] )
             return false;
     return true;
 }
 
-template <typename K, typename V> bool is_canonical(char m_valBegin, const map<K,V> & m_map )
+template <typename K, typename V, template<typename, typename> class map>
+bool is_canonical(char m_valBegin, const map<K,V> & m_map )
 {
     char last = m_valBegin;
     for ( auto const & element : m_map ) {
@@ -121,57 +172,90 @@ template <typename K, typename V> bool is_canonical(char m_valBegin, const map<K
     return true;
 }
 
-template <typename T> T id( T value ) { return value; }
+template <typename T>
+T id( T value ) { return value; }
+
+template<typename intervals_type>
+void intervals(const intervals_type & m_map) {
+    cout << "Intervals:{ ";
+//     for ( auto & [ key, value ] : map.m_map ) cout << "{ " << key << ", " << value << " } ";
+    for ( auto element = m_map.begin(); element != m_map.end(); ++ element)
+        cout << "{ " << element -> first << ", " << element -> second << " } ";
+    cout << "}" << endl;
+
+}
+
+template<size_t size>
+void ruler( ) {
+    cout << "            0";
+    for ( size_t key = 1; key != size; ++ key ) cout << "  " << ( key % 10 );
+    cout << " }" << endl;
+}
+
+template<size_t size, typename map_type>
+void actual(const map_type & map) {
+    cout << "Actual    { " << map[ 0 ];
+    for ( size_t key = 1; key != size; ++ key ) cout << ", " << map[ key ];
+    cout << " }" << endl;
+}
+
+template<size_t size, typename ref_type>
+void expected(const ref_type & ref) {
+    cout << "Expected: { " << ref[ 0 ];
+    for ( size_t key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
+    cout << " }" << endl << endl;
+}
+
+template<size_t size, char valBegin>
+struct Ref {
+    array<char, size> m_ref;
+
+    Ref() { for ( auto & c : m_ref ) c = 'A'; }
+
+    void assign(size_t begin, size_t end, char val) {
+        for ( auto key = begin; key != end ; ++ key ) m_ref[ key ] = val;
+    }
+};
 
 void IntervalMapTest()
 {
     {
+        // Instantiate with archetypes, no functional testing.
         interval_map<Key, Value> map( 'A' );
         map.assign( Key( 0 ), Key( 0 ), Value( 'B' ) );
     }
 
-    array<char, 20> ref;
-    size_t size = ref.size( );
-    interval_map<int, char> map('A');
-    for ( auto & c : ref ) c = 'A';
-    srand( time( 0 ) );
-
+    constexpr size_t size = 20;
     int how_many = 100000;
+
+    interval_map<int, char> map('A');
+    Ref<size, 'A'> ref;
+
+    srand( time( 0 ) );
 
     while ( how_many )
     {
-        int keyBegin = bounded_rand( size - 1 );
-        int keyEnd   = bounded_rand( size - 1 );
+        int keyBegin = test::bounded_rand( size - 1 );
+        int keyEnd   = test::bounded_rand( size - 1 );
+        char value   = 'A' + test::bounded_rand( 6 ); // Values A - F, quite arbitrary.
+
         if ( ! ( keyBegin < keyEnd ) ) continue;
-        char value = 'A' + bounded_rand( 6 );
-
-        int & keyBeginRef = keyBegin;
-//         char & valueRef = value;
-
-        map.assign( keyBeginRef, keyEnd, id( value ) );
-        for ( auto key = keyBegin; key != keyEnd ; ++ key ) ref[ key ] = value;
 
         cout << how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
 
-        cout << "Intervals:{ ";
-        for ( auto & [ key, value ] : map.m_map ) cout << "{ " << key << ", " << value << " } ";
-        cout << "}" << endl;
+        try {
+            map.assign( keyBegin, keyEnd, value );
+            ref.assign( keyBegin, keyEnd, value );
+        } catch (...) {
+            cout << "Caught exception - check strong guarantee." << endl;
+        }
 
-        cout << "            0";
-        for ( size_t key = 1; key != size; ++ key ) cout << "  " << ( key % 10 );
-        cout << " }" << endl;
+        intervals(map.m_map);
+        ruler<size>();
+        actual<size>(map);
+        expected<size>(ref.m_ref);
 
-        cout << "Actual    { " << map[ 0 ];
-        for ( size_t key = 1; key != size; ++ key ) cout << ", " << map[ key ];
-        cout << " }" << endl;
-
-        cout << "Expected: { " << ref[ 0 ];
-        for ( size_t key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
-        cout << " }" << endl << endl;
-
-        if ( ! eq20( map, ref ) ) break;
-        if ( ! is_canonical( map.m_valBegin, map.m_map ) ) break;
-
+        if ( ! eq<size>( map, ref.m_ref ) || ! is_canonical( map.m_valBegin, map.m_map ) ) break;
     }
 }
 
