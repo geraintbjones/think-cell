@@ -8,10 +8,12 @@
 
 namespace test {
 
+using namespace std;
+
 unsigned bounded_rand(unsigned range)
 {
     for (unsigned x, r;;)
-        if (x = std::rand(), r = x % range, x - r <= -range)
+        if (x = rand(), r = x % range, x - r <= -range)
             return r;
 }
 
@@ -42,100 +44,20 @@ template<typename K, typename V> struct map {
 
     template<typename V_fwd>
     iterator try_emplace( iterator hint, const K & key, V_fwd && val ) {
-        return m_map.try_emplace(hint, key, std::forward<V>(val));
+        return m_map.try_emplace(hint, key, forward<V>(val));
     }
 
     iterator insert_or_assign(iterator hint, const K & key, V && val) {
         if (bounded_rand(3) == 2) {
-            throw std::bad_alloc( );
+            throw bad_alloc( );
         };
-        return m_map.insert_or_assign(hint, key, std::forward<V>(val)); }
+        return m_map.insert_or_assign(hint, key, forward<V>(val)); }
 
     iterator erase(iterator pos) { return m_map.erase(pos); }
     iterator erase(iterator first, iterator last) { return m_map.erase(first, last); }
 
     base_map m_map;
 };
-
-} // namespace test
-
-template<typename K, typename V>
-class interval_map {
-	friend void IntervalMapTest();
-	V m_valBegin;
-// 	test::map<K,V> m_map;
-	std::map<K,V> m_map;
-public:
-	// constructor associates whole range of K with val
-	template<typename V_forward>
-	interval_map(V_forward&& val)
-	: m_valBegin(std::forward<V_forward>(val))
-	{}
-
-	// Assign value val to interval [keyBegin, keyEnd).
-	// Overwrite previous values in this interval.
-	// Conforming to the C++ Standard Library conventions, the interval
-	// includes keyBegin, but excludes keyEnd.
-	// If !( keyBegin < keyEnd ), this designates an empty interval,
-	// and assign must do nothing.
-	template<typename V_forward>
-	void assign( K const& keyBegin, K const& keyEnd, V_forward&& val )
-		requires (std::is_same<std::remove_cvref_t<V_forward>, V>::value)
-	{
-        using iterator = decltype(m_map)::iterator;
-
-        if (!(keyBegin < keyEnd)) return;
-
-        auto priorValue = [&](iterator element) -> V const & {
-                return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
-            };
-
-        iterator afterEnd = m_map.upper_bound(keyEnd);
-        V afterEndValue   = priorValue(afterEnd);
-        bool didEndInsert = afterEnd == m_map.begin( ) || std::prev(afterEnd) -> first < keyEnd;
-        iterator end      = m_map.try_emplace(afterEnd, keyEnd, std::move(afterEndValue));
-
-        iterator begin;
-
-        try {
-            begin = m_map.insert_or_assign(end, keyBegin, std::forward<V>(val));
-        } catch (...) {
-            // Clean up work we've already done.
-            if (didEndInsert) {
-                m_map.erase(end);
-            }
-            throw;
-        }
-
-        // Accommodate canonicity.
-        while (end != m_map.end( ) && end -> second == val) {
-            ++ end;
-        }
-
-        if (!(begin -> second == priorValue(begin))) {
-            ++ begin;
-        }
-
-        m_map.erase(begin, end);
-	}
-
-	// look-up of the value associated with key
-	V const& operator[]( K const& key ) const {
-		auto it=m_map.upper_bound(key);
-		if(it==m_map.begin()) {
-			return m_valBegin;
-		} else {
-			return (--it)->second;
-		}
-	}
-};
-
-// Many solutions we receive are incorrect. Consider using a randomized test
-// to discover the cases that your implementation does not handle correctly.
-// We recommend to implement a test function that tests the functionality of
-// the interval_map, for example using a map of int intervals to char.
-
-using namespace std;
 
 struct Key
 {
@@ -219,23 +141,100 @@ struct Ref {
 
 static int how_many = 10;
 
+} // namespace test
+
+template<typename K, typename V>
+class interval_map {
+	friend void IntervalMapTest();
+	V m_valBegin;
+// 	test::map<K,V> m_map;
+	std::map<K,V> m_map;
+public:
+	// constructor associates whole range of K with val
+	template<typename V_forward>
+	interval_map(V_forward&& val)
+	: m_valBegin(std::forward<V_forward>(val))
+	{}
+
+	// Assign value val to interval [keyBegin, keyEnd).
+	// Overwrite previous values in this interval.
+	// Conforming to the C++ Standard Library conventions, the interval
+	// includes keyBegin, but excludes keyEnd.
+	// If !( keyBegin < keyEnd ), this designates an empty interval,
+	// and assign must do nothing.
+	template<typename V_forward>
+	void assign( K const& keyBegin, K const& keyEnd, V_forward&& val )
+		requires (std::is_same<std::remove_cvref_t<V_forward>, V>::value)
+	{
+        using iterator = decltype(m_map)::iterator;
+
+        if (!(keyBegin < keyEnd)) return;
+
+        auto priorValue = [&](iterator element) -> V const & {
+                return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
+            };
+
+        iterator afterEnd = m_map.upper_bound(keyEnd);
+        V afterEndValue   = priorValue(afterEnd);
+        bool didEndInsert = afterEnd == m_map.begin( ) || std::prev(afterEnd) -> first < keyEnd;
+        iterator end      = m_map.try_emplace(afterEnd, keyEnd, std::move(afterEndValue));
+
+        iterator begin;
+
+        try {
+            begin = m_map.insert_or_assign(end, keyBegin, std::forward<V>(val));
+        } catch (...) {
+            // Clean up work we've already done.
+            if (didEndInsert) {
+                m_map.erase(end);
+            }
+            throw;
+        }
+
+        // Accommodate canonicity.
+        while (end != m_map.end( ) && end -> second == val) {
+            ++ end;
+        }
+
+        if (!(begin -> second == priorValue(begin))) {
+            ++ begin;
+        }
+
+        m_map.erase(begin, end);
+	}
+
+	// look-up of the value associated with key
+	V const& operator[]( K const& key ) const {
+		auto it=m_map.upper_bound(key);
+		if(it==m_map.begin()) {
+			return m_valBegin;
+		} else {
+			return (--it)->second;
+		}
+	}
+};
+
+// Many solutions we receive are incorrect. Consider using a randomized test
+// to discover the cases that your implementation does not handle correctly.
+// We recommend to implement a test function that tests the functionality of
+// the interval_map, for example using a map of int intervals to char.
+
 void IntervalMapTest()
 {
     {
         // Instantiate with archetypes, no functional testing.
-        interval_map<Key, Value> map( 'A' );
-        map.assign( Key( 0 ), Key( 0 ), Value( 'B' ) );
+        interval_map<test::Key, test::Value> map( 'A' );
+        map.assign( test::Key( 0 ), test::Key( 0 ), test::Value( 'B' ) );
     }
 
     constexpr size_t size = 20;
-//     int how_many = 100000;
 
     interval_map<int, char> map('A');
-    Ref<size, 'A'> ref;
+    test::Ref<size, 'A'> ref;
 
     srand( time( 0 ) );
 
-    while ( how_many )
+    while ( test::how_many )
     {
         int keyBegin = test::bounded_rand( size - 1 );
         int keyEnd   = test::bounded_rand( size - 1 );
@@ -243,33 +242,33 @@ void IntervalMapTest()
 
         if ( ! ( keyBegin < keyEnd ) ) continue;
 
-        cout << how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
+        std::cout << test::how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << std::endl;
 
         try {
             map.assign( keyBegin, keyEnd, value );
             ref.assign( keyBegin, keyEnd, value );
         } catch (...) {
-            cout << "Caught exception - check strong guarantee." << endl;
+            std::cout << "Caught exception - check strong guarantee." << std::endl;
         }
 
-        intervals(map.m_map);
-        ruler<size>();
-        actual<size>(map);
-        expected<size>(ref.m_ref);
+        test::intervals(map.m_map);
+        test::ruler<size>();
+        test::actual<size>(map);
+        test::expected<size>(ref.m_ref);
 
-        if ( ! eq<size>( map, ref.m_ref ) || ! is_canonical( map.m_valBegin, map.m_map ) ) break;
+        if ( ! test::eq<size>( map, ref.m_ref ) || ! test::is_canonical( map.m_valBegin, map.m_map ) ) break;
     }
 }
 
 int main(int argc, char * argv[])
 {
     if (argc == 2) {
-        how_many = std::atoi(argv[1]);
-        if (how_many) {
+        test::how_many = std::atoi(argv[1]);
+        if (test::how_many) {
             IntervalMapTest( );
             return 0;
         }
     }
-    cout << "Usage: " << argv[0] << "<number of randon tests>" << endl;
+    std::cout << "Usage: " << argv[0] << "<number of randon tests>" << std::endl;
     return 1;
 }
