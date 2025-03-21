@@ -1,6 +1,5 @@
 EXE	:= interval_map
 CXX := $(HOME)/local/gcc-13.2.0/bin/g++
-# export LD_LIBRARY_PATH=$(HOME)/local/gcc-13.2.0/lib64
 CXXFLAGS =             \
     -ggdb              \
     -O0                \
@@ -11,8 +10,11 @@ CXXFLAGS =             \
     -D_GLIBCXX_DEBUG   \
     -fsanitize=address \
 
-.PHONY: clean all
+.PHONY: clean all run
 
+run: all
+	LD_LIBRARY_PATH=$(HOME)/local/gcc-13.2.0/lib64 ./$(EXE) 10 | less
+	
 all: $(EXE)
 
 $(EXE):
