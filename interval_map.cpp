@@ -26,18 +26,15 @@ public:
 
         if (!(keyBegin < keyEnd)) return;
 
-        auto priorValue = [&](iterator element) -> V & {
+        auto priorValue = [&](iterator element) -> V const & {
                 return element == m_map.begin( ) ? m_valBegin : std::prev(element) -> second;
             };
 
-        iterator begin;
+        iterator afterEnd = m_map.upper_bound(keyEnd);
+        bool didEndInsert = afterEnd == m_map.begin( ) || ! (std::prev(afterEnd) -> first < keyEnd);
+        iterator end      = m_map.try_emplace(afterEnd, keyEnd, priorValue(afterEnd));
 
-        auto [end, didEndInsert] = m_map.try_emplace(keyEnd, /* temporary value */ std::forward<V>(val));
-        if (didEndInsert) {
-            end -> second = priorValue(end);
-        }
-        //  else there's already a sentinal at the end of our interval, and that's
-        //  ok.
+        iterator begin;
 
         try {
             begin = m_map.insert_or_assign(end, keyBegin, std::forward<V>(val));
