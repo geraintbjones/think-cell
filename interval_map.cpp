@@ -135,6 +135,7 @@ struct Ref {
     Ref() { for ( auto & c : m_ref ) c = 'A'; }
 
     void assign(size_t begin, size_t end, char val) {
+        if (!(begin < end)) return;
         for ( auto key = begin; key != end ; ++ key ) m_ref[ key ] = val;
     }
 };
@@ -234,15 +235,13 @@ void IntervalMapTest()
 
     srand( time( 0 ) );
 
-    while ( test::how_many )
+    while ( test::how_many -- )
     {
-        int keyBegin = test::bounded_rand( size - 1 );
-        int keyEnd   = test::bounded_rand( size - 1 );
+        int keyBegin = test::bounded_rand( size );
+        int keyEnd   = test::bounded_rand( size );
         char value   = 'A' + test::bounded_rand( 6 ); // Values A - F, quite arbitrary.
 
-        if ( ! ( keyBegin < keyEnd ) ) continue;
-
-        std::cout << test::how_many -- << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << std::endl;
+        std::cout << test::how_many << ":    assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << std::endl;
 
         try {
             map.assign( keyBegin, keyEnd, value );
