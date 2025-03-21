@@ -28,9 +28,9 @@ public:
 
         if (after == m_map.end()) {
             //  If there's no end marker put one in unless its value would match our new interval.
-            auto afterValue = (* this)[keyEnd];
-            if (afterValue != val) {
-                m_map.insert({keyEnd, std::move(afterValue)});
+            V const & afterValue = (* this)[keyEnd];
+            if (!(afterValue == val)) {
+                m_map.insert({keyEnd, afterValue});
             }
         } else {
             // If there is an end marker remove it if its value matches our new interval.
@@ -48,7 +48,7 @@ public:
         }
 
         // Write our new interval iff the value differs from prior interval.
-        if (val != (* this)[keyBegin]) {
+        if (!(val == (* this)[keyBegin])) {
             m_map.insert({keyBegin, std::forward<V>(val)});
         }
 	}
@@ -69,14 +69,28 @@ public:
 // We recommend to implement a test function that tests the functionality of
 // the interval_map, for example using a map of int intervals to char.
 
+#include <cstdlib>
+#include <ctime>
 #include <iostream>
+#include <array>
+
 using namespace std;
 
-void assign( interval_map<int, char> & map, int begin, int end, char value )
+struct Key
 {
-    cout << "assign( " << begin << ", " << end << ", " << value << " )" << endl;
-    map.assign( begin, end, value );
-}
+    Key( ) { }
+    bool operator < ( Key const & ) const { return true; }
+    bool operator > ( Key const & ) const = delete;
+    bool operator == ( Key const & ) const = delete;
+};
+
+struct Value
+{
+    Value( ) { }
+    Value( char ) { }
+    bool operator == ( Value const & ) const { return true; }
+    bool operator != ( Value const & ) const = delete;
+};
 
 template <typename Range> void print( const char * intro, char begin, const Range & range )
 {
@@ -85,53 +99,63 @@ template <typename Range> void print( const char * intro, char begin, const Rang
     cerr << endl;
 }
 
-template <typename RangeOne, typename RangeTwo> bool equalRange( const RangeOne & r1, const RangeTwo & r2 )
+unsigned bounded_rand(unsigned range)
 {
-    for ( auto [_1,_2] = tuple{ r1.begin( ), r2.begin( ) }; _1 != r1.end( ) && _2 != r2.end( ); ++ _1, ++_2 )
-        if ( * _1 != * _2 ) return false;
-    return r1.size( ) == r2.size( );
+    for (unsigned x, r;;)
+        if (x = rand(), r = x % range, x - r <= -range)
+            return r;
 }
 
-bool expect(
-        char   actual_begin, const map<int, char> &                    actual,
-        char expected_begin, initializer_list<pair<const int, char>> expected )
+template <typename R1, typename R2> bool eq20( const R1 & r1, const R2 & r2 )
 {
-    if ( actual_begin == expected_begin && equalRange( actual, expected ) )
-        return true;
-    print( "Expected: ", expected_begin, expected );
-    print( "Actual:   ",   actual_begin, actual   );
-    return false;
+    for ( int key = 0; key != 20; ++ key )
+        if ( r1[ key ] != r2[ key ] )
+            return false;
+    return true;
 }
 
 void IntervalMapTest()
 {
     {
-        interval_map<int, char> map( 'A' );
-
-                                 expect( map.m_valBegin, map.m_map, 'A', { } ); 
-        assign( map, 0,4, 'B' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 4, 'A' } } ); 
-        assign( map, 1,3, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 1, 'A' }, { 3, 'B' }, { 4, 'A' } } ); 
-        assign( map, 3,4, 'C' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 1, 'A' }, { 3, 'C' }, { 4, 'A' } } ); 
-        assign( map, 0,2, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { { 3, 'C' }, { 4, 'A' } } ); 
-        assign( map, 0,4, 'C' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'C' }, { 4, 'A' } } ); 
-        assign( map, 0,4, 'B' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 4, 'A' } } ); 
-        assign( map, 0,4, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { } ); 
+        interval_map<Key, Value> map( 'A' );
+        Value v = map[ Key( ) ];
+        map.assign( Key( ), Key( ), Value( ) );
     }
 
+    array<char, 20> ref;
+    size_t size = ref.size( );
+    interval_map<int, char> map('A');
+    for ( auto & c : ref ) c = 'A';
+    srand( time( 0 ) );
+
+    while ( true )
     {
-        interval_map<int, char> map( 'A' );
+        int keyBegin = bounded_rand( size - 1 );
+        int keyEnd   = bounded_rand( size - 1 );
+        if ( ! ( keyBegin < keyEnd ) ) continue;
+        char value = 'A' + bounded_rand( 6 );
 
-        assign( map, 0,2, 'B' );
-        assign( map, 2,4, 'C' );
-        assign( map, 4,6, 'D' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 2, 'C' }, { 4, 'D' }, { 6, 'A' } } );
+        map.assign( keyBegin, keyEnd, value );
+        for ( auto key = keyBegin; key != keyEnd ; ++ key ) ref[ key ] = value;
 
-        assign( map, 1,5, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'B' }, { 1, 'A' }, { 5, 'D' }, { 6, 'A' } } );
+        cout << "assign( " << keyBegin << ", " << keyEnd << ", " << value << " )" << endl;
 
-        assign( map, 0,3, 'D' ); expect( map.m_valBegin, map.m_map, 'A', { { 0, 'D' }, { 3, 'A' }, { 5, 'D' }, { 6, 'A' } } );
+        cout << "{ ";
+        for ( auto & [ key, value ] : map.m_map ) cout << "{ " << key << ", " << value << " } ";
+        cout << "}" << endl;
 
-        assign( map,-1,6, 'A' ); expect( map.m_valBegin, map.m_map, 'A', { } );
+        cout << "Actual    { " << map[ 0 ];
+        for ( auto key = 1; key != size; ++ key ) cout << ", " << map[ key ];
+        cout << " }" << endl;
+
+        cout << "Expected: { " << ref[ 0 ];
+        for ( auto key = 1; key != size; ++ key ) cout << ", " << ref[ key ];
+        cout << " }" << endl;
+
+        if ( eq20( map, ref ) ) continue;
+
+        break;
     }
-
 }
 
 int main( )
